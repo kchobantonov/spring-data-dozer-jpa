@@ -18,6 +18,7 @@ import org.springframework.data.jpa.repository.query.JpaQueryLookupStrategy;
 import org.springframework.data.jpa.repository.query.JpaQueryMethod;
 import org.springframework.data.jpa.util.JpaMetamodel;
 import org.springframework.data.mapping.context.MappingContext;
+import org.springframework.data.repository.core.RepositoryMetadata;
 import org.springframework.data.repository.core.support.QueryCreationListener;
 import org.springframework.data.repository.core.support.SurroundingTransactionDetectorMethodInterceptor;
 import org.springframework.data.repository.query.QueryLookupStrategy;
@@ -56,6 +57,19 @@ public class DozerJpaRepositoryFactory extends DozerRepositoryFactory {
 		}
 	}
 
+	/*
+	 * (non-Javadoc)
+	 * 
+	 * @see
+	 * org.springframework.data.repository.core.support.RepositoryFactorySupport#
+	 * getRepositoryBaseClass(org.springframework.data.repository.core.
+	 * RepositoryMetadata)
+	 */
+	@Override
+	protected Class<?> getRepositoryBaseClass(RepositoryMetadata metadata) {
+		return SimpleDozerJpaRepository.class;
+	}
+	
 	/*
 	 * (non-Javadoc)
 	 * 
