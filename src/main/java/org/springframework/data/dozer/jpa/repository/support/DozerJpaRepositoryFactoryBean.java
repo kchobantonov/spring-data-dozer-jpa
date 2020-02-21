@@ -45,7 +45,7 @@ public class DozerJpaRepositoryFactoryBean<T extends Repository<S, ID>, S, ID>
 	public DozerJpaRepositoryFactoryBean(Class<? extends T> repositoryInterface) {
 		super(repositoryInterface);
 	}
-	
+
 	/**
 	 * The {@link EntityManager} to be used.
 	 *
@@ -90,14 +90,14 @@ public class DozerJpaRepositoryFactoryBean<T extends Repository<S, ID>, S, ID>
 	@Override
 	public void onApplicationEvent(ContextRefreshedEvent event) {
 		if (dozerRepositoryFactory != null) {
-			dozerRepositoryFactory.validateAfterRefresh();
+			dozerRepositoryFactory.validateAfterRefresh(event.getApplicationContext());
 		}
 	}
 
 	@Override
 	protected RepositoryFactorySupport doCreateRepositoryFactory() {
-		dozerRepositoryFactory = new DozerJpaRepositoryFactory(entityManager, dozerMapper,
-				conversionServiceName, beanFactory, mappingContext);
+		dozerRepositoryFactory = new DozerJpaRepositoryFactory(entityManager, dozerMapper, conversionServiceName,
+				beanFactory, mappingContext);
 		dozerRepositoryFactory.setEntityPathResolver(entityPathResolver);
 		dozerRepositoryFactory.setEscapeCharacter(escapeCharacter);
 
