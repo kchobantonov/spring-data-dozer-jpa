@@ -96,12 +96,12 @@ public class DozerJpaRepositoryFactoryBean<T extends Repository<S, ID>, S, ID>
 
 	@Override
 	protected RepositoryFactorySupport doCreateRepositoryFactory() {
-		DozerJpaRepositoryFactory dozerJpaRepositoryFactory = new DozerJpaRepositoryFactory(entityManager, dozerMapper,
+		dozerRepositoryFactory = new DozerJpaRepositoryFactory(entityManager, dozerMapper,
 				conversionServiceName, beanFactory, mappingContext);
-		dozerJpaRepositoryFactory.setEntityPathResolver(entityPathResolver);
-		dozerJpaRepositoryFactory.setEscapeCharacter(escapeCharacter);
+		dozerRepositoryFactory.setEntityPathResolver(entityPathResolver);
+		dozerRepositoryFactory.setEscapeCharacter(escapeCharacter);
 
-		return dozerJpaRepositoryFactory;
+		return dozerRepositoryFactory;
 	}
 
 	/*
