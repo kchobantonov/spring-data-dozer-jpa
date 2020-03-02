@@ -26,7 +26,7 @@ public class DozerJpaRepositoryFactoryBean<T extends Repository<S, ID>, S, ID>
 		extends TransactionalRepositoryFactoryBeanSupport<T, S, ID>
 		implements BeanFactoryAware, ApplicationListener<ContextRefreshedEvent> {
 
-	private @Nullable EntityManager entityManager;
+	protected @Nullable EntityManager entityManager;
 	protected @Nullable Mapper dozerMapper;
 	protected String conversionServiceName;
 	protected EntityPathResolver entityPathResolver;
