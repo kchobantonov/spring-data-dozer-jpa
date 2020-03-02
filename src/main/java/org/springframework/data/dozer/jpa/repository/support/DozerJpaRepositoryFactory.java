@@ -34,8 +34,8 @@ import com.github.dozermapper.core.Mapper;
 import lombok.extern.slf4j.Slf4j;
 
 public class DozerJpaRepositoryFactory extends DozerRepositoryFactory {
-	private final EntityManager entityManager;
-	private final QueryExtractor extractor;
+	protected final EntityManager entityManager;
+	protected final QueryExtractor extractor;
 
 	public DozerJpaRepositoryFactory(EntityManager entityManager, Mapper dozerMapper, String conversionServiceName,
 			BeanFactory beanFactory, MappingContext<?, ?> mappingContext) {
