@@ -13,7 +13,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.github.dozermapper.core.Mapper;
 
-@Transactional
+@Transactional(readOnly = true)
 public class SimpleDozerJpaRepository<T, ID> extends SimpleDozerRepository<T, ID> {
 
 	public SimpleDozerJpaRepository(RepositoryInformation repositoryInformation,
@@ -32,11 +32,13 @@ public class SimpleDozerJpaRepository<T, ID> extends SimpleDozerRepository<T, ID
 		return super.findAll(pageable);
 	}
 
+	@Transactional
 	@Override
 	public <S extends T> S save(S resource) {
 		return super.save(resource);
 	}
 
+	@Transactional
 	@Override
 	public <S extends T> Iterable<S> saveAll(Iterable<S> resources) {
 		return super.saveAll(resources);
@@ -67,21 +69,25 @@ public class SimpleDozerJpaRepository<T, ID> extends SimpleDozerRepository<T, ID
 		return super.count();
 	}
 
+	@Transactional
 	@Override
 	public void deleteById(ID resourceId) {
 		super.deleteById(resourceId);
 	}
 
+	@Transactional
 	@Override
 	public void delete(T resource) {
 		super.delete(resource);
 	}
 
+	@Transactional
 	@Override
 	public void deleteAll(Iterable<? extends T> resources) {
 		super.deleteAll(resources);
 	}
 
+	@Transactional
 	@Override
 	public void deleteAll() {
 		super.deleteAll();
