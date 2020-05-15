@@ -11,7 +11,6 @@ import org.springframework.data.projection.ProjectionFactory;
 import org.springframework.data.repository.core.CrudMethods;
 import org.springframework.data.repository.core.NamedQueries;
 import org.springframework.data.repository.core.RepositoryMetadata;
-import org.springframework.data.repository.core.support.AbstractRepositoryMetadata;
 import org.springframework.data.repository.query.QueryLookupStrategy;
 import org.springframework.data.repository.query.RepositoryQuery;
 
@@ -36,26 +35,17 @@ public class DozerQueryLookupStrategy implements QueryLookupStrategy {
 	public RepositoryQuery resolveQuery(Method method, RepositoryMetadata metadata, ProjectionFactory factory,
 			NamedQueries namedQueries) {
 
-		DozerRepository dozerRepository = AnnotatedElementUtils.findMergedAnnotation(metadata.getRepositoryInterface(),
-				DozerRepository.class);
-		if (dozerRepository != null) {
-
-			RepositoryMetadata adaptedMetadata = AbstractRepositoryMetadata
-					.getMetadata(dozerRepository.adaptedRepositoryClass());
-
-			return new DozerRepositoryQuery(new DozerQueryMethod(method, metadata, factory), dozerMapper,
-					adaptedQueryLookupStrategy.resolveQuery(method, adaptedMetadata, factory, namedQueries),
-					conversionServiceName, beanFactory);
-		}
-
-		return new DozerRepositoryQuery(
-				new DozerQueryMethod(method, metadata, factory), dozerMapper, adaptedQueryLookupStrategy
-						.resolveQuery(method, new AdaptedRepositoryMetadata(metadata), factory, namedQueries),
-				conversionServiceName, beanFactory);
-
+		return new DozerRepositoryQuery(new DozerQueryMethod(method, metadata, factory), dozerMapper,
+				resolveAdaptedQuery(method, metadata, factory, namedQueries), conversionServiceName, beanFactory);
 	}
 
-	private class AdaptedRepositoryMetadata implements RepositoryMetadata {
+	protected RepositoryQuery resolveAdaptedQuery(Method method, RepositoryMetadata metadata, ProjectionFactory factory,
+			NamedQueries namedQueries) {
+		return adaptedQueryLookupStrategy.resolveQuery(method, new AdaptedRepositoryMetadata(metadata), factory,
+				namedQueries);
+	}
+
+	protected class AdaptedRepositoryMetadata implements RepositoryMetadata {
 		private RepositoryMetadata delegate;
 
 		public AdaptedRepositoryMetadata(RepositoryMetadata delegate) {
