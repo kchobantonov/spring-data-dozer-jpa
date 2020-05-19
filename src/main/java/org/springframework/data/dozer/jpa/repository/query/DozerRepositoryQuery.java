@@ -1,27 +1,29 @@
 package org.springframework.data.dozer.jpa.repository.query;
 
-import java.lang.reflect.Field;
 import java.util.Collection;
+import java.util.Map;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import org.springframework.beans.factory.BeanFactory;
 import org.springframework.beans.factory.ListableBeanFactory;
 import org.springframework.core.CollectionFactory;
 import org.springframework.core.convert.ConversionService;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Slice;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.domain.Sort.Order;
 import org.springframework.data.dozer.repository.query.DozerEntityMetadata;
+import org.springframework.data.dozer.repository.support.DozerUtil;
+import org.springframework.data.dozer.repository.support.DozerUtilFactory;
 import org.springframework.data.repository.query.QueryMethod;
 import org.springframework.data.repository.query.RepositoryQuery;
 import org.springframework.data.util.Lazy;
 import org.springframework.util.Assert;
-import org.springframework.util.ReflectionUtils;
 import org.springframework.util.StringUtils;
 
 import com.github.dozermapper.core.Mapper;
-import com.github.dozermapper.core.classmap.ClassMap;
-import com.github.dozermapper.core.classmap.ClassMappings;
-import com.github.dozermapper.core.classmap.Configuration;
-import com.github.dozermapper.core.classmap.MappingDirection;
 import com.github.dozermapper.core.metadata.MetadataLookupException;
 
 public class DozerRepositoryQuery implements RepositoryQuery {
@@ -29,6 +31,8 @@ public class DozerRepositoryQuery implements RepositoryQuery {
 	private final Mapper dozerMapper;
 	private final RepositoryQuery resolveQuery;
 	private final Lazy<ConversionService> conversionService;
+	protected Map<String, String> dozerEntityFieldNameToAdaptedFieldName;
+	protected boolean dozerEntityFieldNameToAdaptedFieldNameInitialized = false;
 
 	public DozerRepositoryQuery(DozerQueryMethod method, Mapper dozerMapper, RepositoryQuery resolveQuery,
 			String conversionServiceName, final BeanFactory beanFactory) {
@@ -44,7 +48,7 @@ public class DozerRepositoryQuery implements RepositoryQuery {
 
 	@Override
 	public Object execute(Object[] parameters) {
-		Object result = resolveQuery.execute(parameters);
+		Object result = resolveQuery.execute(toAdaptedParameters(parameters));
 
 		if (result == null || method.getResultProcessor().getReturnedType().isProjecting()) {
 			return result;
@@ -83,6 +87,56 @@ public class DozerRepositoryQuery implements RepositoryQuery {
 		return result;
 	}
 
+	protected Object[] toAdaptedParameters(Object[] parameters) {
+		if (!dozerEntityFieldNameToAdaptedFieldNameInitialized) {
+			synchronized (this) {
+				if (!dozerEntityFieldNameToAdaptedFieldNameInitialized) {
+					DozerUtil dozerUtil = DozerUtilFactory.getInstance().getDozerUtil(dozerMapper);
+
+					dozerEntityFieldNameToAdaptedFieldName = dozerUtil
+							.getDozerEntityFieldNameToAdaptedFieldNameMap(method.getEntityInformation());
+					dozerEntityFieldNameToAdaptedFieldNameInitialized = true;
+				}
+			}
+		}
+
+		if (hasSortParameter(parameters) && dozerEntityFieldNameToAdaptedFieldName != null
+				&& !dozerEntityFieldNameToAdaptedFieldName.isEmpty()) {
+
+			Object[] newParameters = new Object[parameters.length];
+			System.arraycopy(parameters, 0, newParameters, 0, parameters.length);
+
+			for (int i = 0; i < newParameters.length; i++) {
+				Object parameter = newParameters[i];
+				if (parameter instanceof Sort && ((Sort) parameter).isSorted()) {
+					Sort sort = toAdaptedSort((Sort) parameter);
+					newParameters[i] = sort;
+				} else if (parameter instanceof Pageable && ((Pageable) parameter).getSort().isSorted()) {
+					Pageable pageable = toAdaptedPageable((Pageable) parameter);
+					newParameters[i] = pageable;
+				}
+			}
+
+			return newParameters;
+		}
+
+		return parameters;
+	}
+
+	private boolean hasSortParameter(Object[] parameters) {
+		if (parameters != null) {
+			for (Object parameter : parameters) {
+				if (parameter instanceof Sort && ((Sort) parameter).isSorted()) {
+					return true;
+				} else if (parameter instanceof Pageable && ((Pageable) parameter).getSort().isSorted()) {
+					return true;
+				}
+			}
+
+		}
+		return false;
+	}
+
 	@Override
 	public QueryMethod getQueryMethod() {
 		return resolveQuery.getQueryMethod();
@@ -104,7 +158,9 @@ public class DozerRepositoryQuery implements RepositoryQuery {
 		boolean considerConversionServiceForEntityMapping = entityInformation.getMapEntityUsingConvertionService()
 				&& conversionService.getOptional().isPresent();
 
-		if (!hasDozerMapping(entityInformation.getJavaType(), entityInformation.getAdaptedJavaType(),
+		DozerUtil dozerUtil = DozerUtilFactory.getInstance().getDozerUtil(dozerMapper);
+
+		if (!dozerUtil.hasDozerMapping(entityInformation.getJavaType(), entityInformation.getAdaptedJavaType(),
 				entityInformation.getDozerMapId())) {
 			if (!considerConversionServiceForEntityMapping || !conversionService.getOptional().get()
 					.canConvert(entityInformation.getAdaptedJavaType(), entityInformation.getJavaType())) {
@@ -135,56 +191,31 @@ public class DozerRepositoryQuery implements RepositoryQuery {
 		}
 	}
 
-	protected boolean hasDozerMapping(Class<?> srcClass, Class<?> destClass, String mapId) {
-		ClassMap classMap = getClassMap(srcClass, destClass, mapId);
-
-		if (classMap != null) {
-			return true;
+	protected Sort toAdaptedSort(Sort sort) {
+		if (sort.isSorted() && dozerEntityFieldNameToAdaptedFieldName != null
+				&& !dozerEntityFieldNameToAdaptedFieldName.isEmpty()) {
+			sort = Sort.by(sort.toList().stream().map(it -> toAdaptedOrder(it)).collect(Collectors.toList()));
 		}
 
-		Configuration configuration = getGlobalConfiguration();
+		return sort;
+	}
 
-		if (configuration.getCustomConverters() != null
-				&& configuration.getCustomConverters().findConverter(srcClass, destClass) != null) {
-			return true;
+	protected Order toAdaptedOrder(Order order) {
+		if (dozerEntityFieldNameToAdaptedFieldName != null && !dozerEntityFieldNameToAdaptedFieldName.isEmpty()) {
+			return order.withProperty(
+					dozerEntityFieldNameToAdaptedFieldName.getOrDefault(order.getProperty(), order.getProperty()));
 		}
 
-		return false;
+		return order;
 	}
 
-	protected ClassMap getClassMap(Class<?> srcClass, Class<?> destClass, String mapId) {
-		ClassMappings classMappings = getClassMappings();
-
-		ClassMap mapping = classMappings.find(srcClass, destClass, mapId);
-
-		if (mapping == null) {
-			mapping = classMappings.find(destClass, srcClass, mapId);
-			if (mapping != null && MappingDirection.ONE_WAY == mapping.getType()) {
-				return null;
-			} else {
-				return null;
-			}
+	protected Pageable toAdaptedPageable(Pageable pageable) {
+		if (pageable.getSort().isSorted() && dozerEntityFieldNameToAdaptedFieldName != null
+				&& !dozerEntityFieldNameToAdaptedFieldName.isEmpty()) {
+			pageable = PageRequest.of(pageable.getPageNumber(), pageable.getPageSize(),
+					toAdaptedSort(pageable.getSort()));
 		}
 
-		return mapping;
+		return pageable;
 	}
-
-	protected Configuration getGlobalConfiguration() {
-		Field globalConfigurationField = ReflectionUtils.findField(dozerMapper.getMapperModelContext().getClass(),
-				"globalConfiguration", Configuration.class);
-		ReflectionUtils.makeAccessible(globalConfigurationField);
-		Configuration globalConfiguration = (Configuration) ReflectionUtils.getField(globalConfigurationField,
-				dozerMapper.getMapperModelContext());
-		return globalConfiguration;
-	}
-
-	protected ClassMappings getClassMappings() {
-		Field classMappingsField = ReflectionUtils.findField(dozerMapper.getMappingMetadata().getClass(),
-				"classMappings", ClassMappings.class);
-		ReflectionUtils.makeAccessible(classMappingsField);
-		ClassMappings classMappings = (ClassMappings) ReflectionUtils.getField(classMappingsField,
-				dozerMapper.getMappingMetadata());
-		return classMappings;
-	}
-
 }
