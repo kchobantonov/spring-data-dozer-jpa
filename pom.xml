@@ -55,7 +55,7 @@
 		<repository>
 			<id>bintray-kchobantonov-maven</id>
 			<name>kchobantonov-maven</name>
-			<url>https://api.bintray.com/maven/kchobantonov/maven/;publish=1</url>
+			<url>https://api.bintray.com/maven/kchobantonov/maven/spring-data-dozer-jpa;publish=1</url>
 		</repository>
 	</distributionManagement>
 	
@@ -63,7 +63,7 @@
 		<dependency>
 			<groupId>org.springframework.data</groupId>
 			<artifactId>spring-data-dozer</artifactId>
-			<version>1.0.0-SNAPSHOT</version>
+			<version>1.0.0</version>
 		</dependency>
 		<dependency>
 			<groupId>org.projectlombok</groupId>
